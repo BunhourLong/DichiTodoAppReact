@@ -1,10 +1,11 @@
 # DichiTodoApp
 
-A React 19 app for the state / effects / data-fetching / routing module: one
-owner for shared state, effects that clean up after themselves, fetches that
-survive race conditions, and a route for every view.
+A React 19 app built module by module: one owner for shared state, effects that
+clean up after themselves, fetches that survive race conditions, a route for
+every view, context instead of prop drilling, hooks any component can pick up,
+and tests that drive the UI the way a user does.
 
-**Stack:** React · TypeScript · Vite · Tailwind CSS · shadcn/ui · React Router · ESLint
+**Stack:** React · TypeScript · Vite · Tailwind CSS · shadcn/ui · React Router · Vitest · Testing Library · ESLint
 
 ## Running it
 
@@ -13,7 +14,8 @@ npm install
 npm run dev
 ```
 
-Then open the printed URL. Other scripts: `npm run lint`, `npm run typecheck`,
+Then open the printed URL. Other scripts: `npm test` (watch) and
+`npm run test:run` (one-shot), `npm run lint`, `npm run typecheck`,
 `npm run build` (which typechecks first), `npm run preview`.
 
 ## Routes
@@ -276,8 +278,165 @@ Item count, subtotal, shipping and total are all derived during render from
 
 ### Screenshots
 
-Screenshots for this module are **not committed** — they ship zipped alongside
-the hand-in (`Context&Reducers.zip`), and `*.zip` is in `.gitignore`.
+Screenshots are **not committed** — they ship zipped alongside each hand-in
+(`Context&Reducers.zip`, `Hooks & Tests.zip`), and `*.zip` is in `.gitignore`.
+
+## 8. Two hooks, extracted by hand
+
+Both live in `src/hooks/`, both start with `use`, and neither knows anything
+about the components that call them.
+
+### `useLocalStorage(key, initial)`
+
+`src/hooks/useLocalStorage.ts`. The signature is deliberately `useState`'s,
+updater form included, so a component swaps one for the other without touching
+a call site:
+
+```ts
+const [theme, setTheme] = useLocalStorage<Theme>('dichi-theme', 'light')
+setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+```
+
+React state is still the single owner of the value. Storage is a **mirror**
+written after the fact, never something read during render — so there is no
+second source of truth to drift.
+
+| Detail | Why |
+| --- | --- |
+| Lazy initialiser | The key is read once per mount, not on every render. |
+| Every read wrapped in `try` | Safari's private mode throws on `getItem`, and a key can hold half-written JSON from an older build. Neither is a reason to fail to render, so both fall back to `initial`. |
+| `storage` listener + `removeEventListener` | Two open tabs stay in agreement, and the listener is taken back off (rule 4). |
+| `initial` pinned in a ref | A caller passing an object literal would otherwise hand the hook a new `initial` every render and re-subscribe the listener each time. |
+
+The consumer is `components/layout/ThemeToggle.tsx` in the header. Flip it, hit
+refresh, and the theme is still there. Its own effect writes the `dark` class
+onto `<html>` and has **no cleanup on purpose**: it subscribes to nothing and
+schedules nothing, so there is nothing to take back — the comment in the file
+says exactly that, as rule 4 requires.
+
+### `useDebounce(value, 500)`
+
+`src/hooks/useDebounce.ts`. `useRef` holds the one pending timer id; `useEffect`
+sets it and clears it.
+
+```ts
+const [query, setQuery] = useState('')          // changes on every keystroke
+const debouncedQuery = useDebounce(query, 500)  // changes once, after the last one
+```
+
+`/users` puts both on screen side by side, with a **settling…** badge while they
+disagree, so the delay is something you can watch rather than take on faith. The
+filter reads the debounced copy, so typing `leanne` runs it once instead of six
+times — and the filtered list is derived during render from the one array, never
+stored.
+
+### What broke when the cleanup came off
+
+Deleting the `return () => clearTimeout(…)` and re-running the suite failed two
+tests, which is the honest answer to the question:
+
+```
+× useDebounce > restarts the clock on every keystroke rather than firing mid-word
+  → expected 'lea' to be ''
+× useDebounce > leaves no timer pending when the component unmounts
+  → expected 2 to be 1
+```
+
+> Without the cleanup the timers stop cancelling each other, so every keystroke
+> keeps its own 500 ms timer and they all fire in turn — the value is no longer
+> debounced, it is the raw value on a delay, flickering through `l`, `le`, `lea`
+> on its way to the real one, with a pile of timers still queued to fire into a
+> component that may already be unmounted.
+
+The sneaky part is that the *final* value still looks right, which is why
+"settles once on the last value" kept passing. Only the test that asserts what
+happens **mid-word**, and the one that counts pending timers, catch it.
+
+## 9. Tests — Vitest + React Testing Library
+
+```bash
+npm test          # watch
+npm run test:run  # one-shot, what CI would run
+npx vitest run    # the same thing
+```
+
+`vite.config.ts` carries the `test` block: jsdom, and `include` pointed at
+`src/**/*.test.{ts,tsx}` because **tests live next to the thing they test**, not
+in a parallel tree.
+
+`globals` is left **off** — `describe` / `it` / `expect` are imported in every
+file like anything else. The cost is that React Testing Library's auto-cleanup
+never registers itself, so `src/test/setup.ts` wires the unmount up by hand;
+without it every render stays in the document and the next test's
+`getByLabelText` finds two inputs. `localStorage` is cleared there too, since a
+hook built to survive a refresh will happily survive into the next test.
+
+| Suite | File | What it covers |
+| --- | --- | --- |
+| `OrderForm` | `src/components/cart/OrderForm.test.tsx` | renders, types, submits, validates, and two absence proofs |
+| `UsersPage` | `src/pages/UsersPage.test.tsx` | the async load with `findBy`, the 404, and the debounced filter |
+| `useLocalStorage` | `src/hooks/useLocalStorage.test.ts` | initial / stored / written back / corrupt JSON / survives a remount |
+| `useDebounce` | `src/hooks/useDebounce.test.ts` | fake timers, rapid typing, and the pending-timer count after unmount |
+
+### The form, driven the way a user drives it
+
+```ts
+emailField:   screen.getByLabelText(/email for the receipt/i)
+submitButton: screen.getByRole('button', { name: /place order/i })
+error:        await screen.findByRole('alert')
+```
+
+Every query is one a person could describe out loud: the field with that label,
+the button that says that, the thing that shouted at me. **No test ids, no class
+names, no reaching into the component.** Rearrange the markup and, as long as the
+form still reads the same, the tests still pass.
+
+Typing and submitting go through `userEvent` — by click *and* by Enter, because
+a one-field form is usually left with the return key. The error is asserted to
+be **attached to the field** (`toBeInvalid`, `toHaveAccessibleDescription`), not
+merely somewhere on screen, because that attachment is the only way anyone on a
+screen reader hears about it.
+
+### Waiting for data with `findBy`
+
+`UsersPage.test.tsx` stubs `fetch` per test and asserts the skeleton is what is
+on screen *before* the await:
+
+```ts
+expect(screen.getByLabelText('Loading users')).toBeInTheDocument()
+expect(await screen.findByText('Leanne Graham')).toBeInTheDocument()
+```
+
+`findBy*` is `getBy*` + `waitFor`, and the only query that can wait for
+something that is not there yet. A second test serves a 404 and asserts the
+error state, which only appears because `useFetch` raises it by hand — `fetch`
+does not reject on one.
+
+### Proving absence
+
+Five `queryBy*` assertions returning `null`, each one for an element that is
+genuinely gone rather than merely different:
+
+| Where | Once… |
+| --- | --- |
+| `OrderForm` | …nothing has been submitted yet, there is no alert at all |
+| `OrderForm` | …the address is fixed, the complaint is gone |
+| `UsersPage` | …the data lands, the loading skeleton is gone |
+| `UsersPage` | …the debounce settles, the filtered-out user is gone |
+| `UsersPage` | …it settles, so is the **settling…** badge |
+
+`getBy*` cannot make any of those statements — it throws, and "it throws" is not
+the same claim as "there is nothing showing".
+
+### One footnote on fake timers
+
+The hook tests run on `vi.useFakeTimers()`, which is what makes "499 ms is not
+yet" assertable. The **DOM** tests deliberately do not: this version of Testing
+Library can only advance a *Jest* fake clock, so under Vitest's its async
+helpers sit waiting on a `setTimeout` that nothing ever moves, and every `await`
+in the file hangs. So the 500 ms is really waited out there and `findBy` waits
+for it — the timing itself is pinned down in `useDebounce.test.ts`, where there
+is no DOM to await and a fake clock works perfectly.
 
 ## Audit checklist
 
@@ -291,3 +450,12 @@ the hand-in (`Context&Reducers.zip`), and `*.zip` is in `.gitignore`.
 - [x] `AuthContext` with `signIn(email)` / `signOut()`, a provider at the root, and a NavBar showing "Sign in" or "Hi, {user.email}"
 - [x] `CartContext` on `useReducer` with a discriminated-union `CartAction` — ADD_ITEM, REMOVE_ITEM, UPDATE_QUANTITY (0 removes the line), dispatched from real buttons
 - [x] Checkout summary reads the cart via `useContext`; no prop carries cart data anywhere in the tree
+- [x] `useLocalStorage(key, initial)` written by hand, keeping `useState`'s signature — the theme survives a refresh
+- [x] `useDebounce(value, 500)` on `useRef` + `useEffect`, with raw and debounced shown side by side in the directory search
+- [x] Every custom hook starts with `use` and calls hooks only at the top level
+- [x] Every `setTimeout` has its `clearTimeout`, every listener its `removeEventListener` — asserted, not assumed
+- [x] Vitest + React Testing Library, tests sitting next to the components they test
+- [x] The form test renders with `getByLabelText`, types and submits with `userEvent`, and sees the validation error
+- [x] An async test waits for data with `findBy*`
+- [x] Absence proved with `queryBy*` returning `null`, five times over
+- [x] Every query mirrors a user — labels, roles, visible text; not one test id
