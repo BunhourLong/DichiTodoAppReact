@@ -1,0 +1,158 @@
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import {
+  ArrowLeft,
+  Building2,
+  Globe,
+  Mail,
+  MapPin,
+  Phone,
+  TriangleAlert,
+} from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
+import { API_BASE, initialsOf } from '@/lib/api'
+
+function DetailRow({ icon: Icon, label, children }) {
+  return (
+    <div className="flex items-start gap-3 py-2">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm break-words">{children}</p>
+      </div>
+    </div>
+  )
+}
+
+export default function UserDetailPage() {
+  // The URL is the input to this page: /users/3 fetches user 3.
+  const { id } = useParams()
+
+  const [status, setStatus] = useState('loading')
+  const [user, setUser] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
+    async function loadUser() {
+      setStatus('loading')
+      setError(null)
+
+      try {
+        const response = await fetch(`${API_BASE}/users/${id}`, {
+          signal: controller.signal,
+        })
+
+        if (response.status === 404) {
+          throw new Error(`No user with id "${id}".`)
+        }
+        if (!response.ok) {
+          throw new Error(`Request failed — ${response.status} ${response.statusText}`)
+        }
+
+        const data = await response.json()
+        if (cancelled) return
+
+        setUser(data)
+        setStatus('success')
+      } catch (requestError) {
+        if (cancelled || requestError.name === 'AbortError') return
+
+        setError(requestError.message)
+        setStatus('error')
+      }
+    }
+
+    loadUser()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+    // `id` is the only value read from outside, so it is the only dependency:
+    // change the URL and the fetch re-runs, stay put and it does not.
+  }, [id])
+
+  return (
+    <div className="space-y-6">
+      <Button asChild variant="ghost" size="sm" className="-ml-2.5">
+        <Link to="/users">
+          <ArrowLeft data-icon="inline-start" aria-hidden="true" />
+          Back to directory
+        </Link>
+      </Button>
+
+      {status === 'loading' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-12 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-3/5" />
+          </CardContent>
+        </Card>
+      )}
+
+      {status === 'error' && (
+        <Alert variant="destructive">
+          <TriangleAlert aria-hidden="true" />
+          <AlertTitle>User not available</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {status === 'success' && user && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Avatar className="size-12">
+                <AvatarFallback>{initialsOf(user.name)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-xl">{user.name}</CardTitle>
+                <Badge variant="secondary" className="mt-1">
+                  @{user.username}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Separator className="mb-2" />
+            <DetailRow icon={Mail} label="Email">
+              {user.email}
+            </DetailRow>
+            <DetailRow icon={Phone} label="Phone">
+              {user.phone}
+            </DetailRow>
+            <DetailRow icon={Globe} label="Website">
+              {user.website}
+            </DetailRow>
+            <DetailRow icon={MapPin} label="Address">
+              {user.address.suite}, {user.address.street}, {user.address.city}{' '}
+              {user.address.zipcode}
+            </DetailRow>
+            <DetailRow icon={Building2} label="Company">
+              {user.company.name} — {user.company.catchPhrase}
+            </DetailRow>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
