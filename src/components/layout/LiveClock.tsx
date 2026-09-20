@@ -22,7 +22,7 @@ export default function LiveClock() {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 tabular-nums"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums"
       aria-label="Current time"
     >
       <Clock3 className="size-3.5 text-muted-foreground" aria-hidden="true" />

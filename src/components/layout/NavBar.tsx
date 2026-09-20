@@ -59,7 +59,7 @@ export default function NavBar() {
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-4xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4">
         <NavLink to="/todos" className="font-semibold tracking-tight">
           Dichi<span className="text-muted-foreground">Todo</span>
         </NavLink>
@@ -97,7 +97,7 @@ export default function NavBar() {
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
           {user ? (
             <>
-              <span className="max-w-[10rem] truncate text-sm" title={user.email}>
+              <span className="max-w-[16rem] truncate text-sm whitespace-nowrap" title={user.email}>
                 Hi, <span className="font-medium">{user.email}</span>
               </span>
               <Button type="button" size="sm" variant="ghost" onClick={signOut}>

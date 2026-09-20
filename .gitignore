@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Screenshots ship zipped with the hand-in, never in the repo
+*.zip

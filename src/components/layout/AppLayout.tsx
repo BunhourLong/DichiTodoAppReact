@@ -8,11 +8,11 @@ export default function AppLayout() {
     <div className="min-h-screen bg-background text-foreground">
       <NavBar />
 
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
+      <main className="mx-auto w-full max-w-5xl px-4 py-8">
         <Outlet />
       </main>
 
-      <footer className="mx-auto w-full max-w-4xl px-4 pb-10 text-xs text-muted-foreground">
+      <footer className="mx-auto w-full max-w-5xl px-4 pb-10 text-xs text-muted-foreground">
         <div className="flex items-center gap-3 lg:hidden">
           <WindowWidth />
           <LiveClock />

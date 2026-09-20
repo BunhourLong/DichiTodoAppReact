@@ -37,7 +37,7 @@ export default function WindowWidth() {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 tabular-nums"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums"
       aria-label="Window width"
     >
       <MonitorSmartphone
