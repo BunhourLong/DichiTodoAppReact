@@ -2,24 +2,31 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { ListTodo, LogIn, LogOut, Users, X } from 'lucide-react'
+import { ListTodo, LogIn, LogOut, ShoppingCart, Store, Users, X } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import LiveClock from '@/components/layout/LiveClock'
 import WindowWidth from '@/components/layout/WindowWidth'
+import { cartItemCount } from '@/context/cart-context'
 import { useAuth } from '@/hooks/useAuth'
+import { useCart } from '@/hooks/useCart'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
   to: string
   label: string
   icon: LucideIcon
+  /** Only the checkout link wears the cart count. */
+  showCartCount?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/todos', label: 'Todos', icon: ListTodo },
   { to: '/users', label: 'Directory', icon: Users },
+  { to: '/shop', label: 'Shop', icon: Store },
+  { to: '/checkout', label: 'Checkout', icon: ShoppingCart, showCartCount: true },
 ]
 
 /**
@@ -29,6 +36,10 @@ const NAV_ITEMS: NavItem[] = [
  */
 export default function NavBar() {
   const { user, signIn, signOut } = useAuth()
+  const { items } = useCart()
+
+  // Derived during render from the one cart array.
+  const totalInCart = cartItemCount(items)
 
   // Private UI state: whether the little sign-in form is open and what is
   // typed in it. Neither is shared, so neither belongs in the context.
@@ -48,13 +59,13 @@ export default function NavBar() {
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-14 w-full max-w-4xl items-center gap-3 px-4">
         <NavLink to="/todos" className="font-semibold tracking-tight">
           Dichi<span className="text-muted-foreground">Todo</span>
         </NavLink>
 
         <nav className="flex items-center gap-1" aria-label="Main">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+          {NAV_ITEMS.map(({ to, label, icon: Icon, showCartCount }) => (
             <NavLink
               key={to}
               to={to}
@@ -69,6 +80,11 @@ export default function NavBar() {
             >
               <Icon className="size-4" aria-hidden="true" />
               <span className="hidden sm:inline">{label}</span>
+              {showCartCount && totalInCart > 0 && (
+                <Badge variant="secondary" className="px-1.5 tabular-nums">
+                  {totalInCart}
+                </Badge>
+              )}
             </NavLink>
           ))}
         </nav>
