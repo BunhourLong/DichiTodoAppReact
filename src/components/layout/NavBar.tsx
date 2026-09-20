@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import LiveClock from '@/components/layout/LiveClock'
+import ThemeToggle from '@/components/layout/ThemeToggle'
 import WindowWidth from '@/components/layout/WindowWidth'
 import { cartItemCount } from '@/context/cart-context'
 import { useAuth } from '@/hooks/useAuth'
@@ -95,6 +96,10 @@ export default function NavBar() {
         </div>
 
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
+          {/* Owns nothing shared: the theme it toggles is its own state, kept
+              on disk by useLocalStorage rather than by anything up here. */}
+          <ThemeToggle />
+
           {user ? (
             <>
               <span className="max-w-[16rem] truncate text-sm whitespace-nowrap" title={user.email}>
