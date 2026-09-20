@@ -5,14 +5,18 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import UserCard from '@/components/users/UserCard'
 import UserListSkeleton from '@/components/users/UserListSkeleton'
-import { USER_SOURCES } from '@/lib/api'
+import { USER_SOURCES, USER_SOURCE_KEYS } from '@/lib/api'
+import type { UserSourceKey } from '@/lib/api'
+import type { User } from '@/types/user'
+
+type Status = 'loading' | 'success' | 'error'
 
 export default function UsersPage() {
-  const [source, setSource] = useState('all')
+  const [source, setSource] = useState<UserSourceKey>('all')
   const [attempt, setAttempt] = useState(0)
-  const [status, setStatus] = useState('loading')
-  const [users, setUsers] = useState([])
-  const [error, setError] = useState(null)
+  const [status, setStatus] = useState<Status>('loading')
+  const [users, setUsers] = useState<User[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const url = USER_SOURCES[source].url
 
@@ -37,15 +41,17 @@ export default function UsersPage() {
           throw new Error(`Request failed — ${response.status} ${response.statusText}`)
         }
 
-        const data = await response.json()
+        const data = (await response.json()) as User[]
         if (cancelled) return
 
         setUsers(data)
         setStatus('success')
       } catch (requestError) {
-        if (cancelled || requestError.name === 'AbortError') return
+        if (cancelled || (requestError as Error).name === 'AbortError') return
 
-        setError(requestError.message)
+        setError(
+          requestError instanceof Error ? requestError.message : 'Request failed.',
+        )
         setStatus('error')
       }
     }
@@ -80,7 +86,7 @@ export default function UsersPage() {
             role="group"
             aria-label="Choose a data source"
           >
-            {Object.entries(USER_SOURCES).map(([key, { label }]) => (
+            {USER_SOURCE_KEYS.map((key) => (
               <Button
                 key={key}
                 type="button"
@@ -89,7 +95,7 @@ export default function UsersPage() {
                 aria-pressed={source === key}
                 onClick={() => setSource(key)}
               >
-                {label}
+                {USER_SOURCES[key].label}
               </Button>
             ))}
           </div>

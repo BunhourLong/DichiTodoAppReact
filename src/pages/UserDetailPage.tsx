@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import {
   ArrowLeft,
   Building2,
@@ -17,8 +19,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { API_BASE, initialsOf } from '@/lib/api'
+import type { User } from '@/types/user'
 
-function DetailRow({ icon: Icon, label, children }) {
+interface DetailRowProps {
+  icon: LucideIcon
+  label: string
+  children: ReactNode
+}
+
+function DetailRow({ icon: Icon, label, children }: DetailRowProps) {
   return (
     <div className="flex items-start gap-3 py-2">
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -30,13 +39,15 @@ function DetailRow({ icon: Icon, label, children }) {
   )
 }
 
+type Status = 'loading' | 'success' | 'error'
+
 export default function UserDetailPage() {
   // The URL is the input to this page: /users/3 fetches user 3.
   const { id } = useParams()
 
-  const [status, setStatus] = useState('loading')
-  const [user, setUser] = useState(null)
-  const [error, setError] = useState(null)
+  const [status, setStatus] = useState<Status>('loading')
+  const [user, setUser] = useState<User | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -58,15 +69,17 @@ export default function UserDetailPage() {
           throw new Error(`Request failed — ${response.status} ${response.statusText}`)
         }
 
-        const data = await response.json()
+        const data = (await response.json()) as User
         if (cancelled) return
 
         setUser(data)
         setStatus('success')
       } catch (requestError) {
-        if (cancelled || requestError.name === 'AbortError') return
+        if (cancelled || (requestError as Error).name === 'AbortError') return
 
-        setError(requestError.message)
+        setError(
+          requestError instanceof Error ? requestError.message : 'Request failed.',
+        )
         setStatus('error')
       }
     }

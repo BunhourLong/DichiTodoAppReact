@@ -1,12 +1,21 @@
 import { CheckCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import type { TodoFilter } from '@/types/todo'
 
-const FILTERS = [
+const FILTERS: { value: TodoFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
   { value: 'completed', label: 'Completed' },
 ]
+
+interface FilterBarProps {
+  filter: TodoFilter
+  onFilterChange: (filter: TodoFilter) => void
+  activeCount: number
+  completedCount: number
+  onClearCompleted: () => void
+}
 
 /**
  * Holds no state at all. The active filter arrives as a prop and every click
@@ -19,7 +28,7 @@ export default function FilterBar({
   activeCount,
   completedCount,
   onClearCompleted,
-}) {
+}: FilterBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div

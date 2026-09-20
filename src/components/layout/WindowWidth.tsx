@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { MonitorSmartphone } from 'lucide-react'
 
-function breakpointFor(width) {
+type Breakpoint = 'sm' | 'md' | 'lg' | 'xl'
+
+function breakpointFor(width: number): Breakpoint {
   if (width < 640) return 'sm'
   if (width < 768) return 'md'
   if (width < 1024) return 'lg'
@@ -15,7 +17,7 @@ function breakpointFor(width) {
  * fire setState on unmounted components on the next resize.
  */
 export default function WindowWidth() {
-  const [width, setWidth] = useState(() => window.innerWidth)
+  const [width, setWidth] = useState<number>(() => window.innerWidth)
 
   useEffect(() => {
     function handleResize() {

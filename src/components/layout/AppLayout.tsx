@@ -1,10 +1,17 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import type { LucideIcon } from 'lucide-react'
 import { ListTodo, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import LiveClock from '@/components/layout/LiveClock'
 import WindowWidth from '@/components/layout/WindowWidth'
 
-const NAV_ITEMS = [
+interface NavItem {
+  to: string
+  label: string
+  icon: LucideIcon
+}
+
+const NAV_ITEMS: NavItem[] = [
   { to: '/todos', label: 'Todos', icon: ListTodo },
   { to: '/users', label: 'Directory', icon: Users },
 ]

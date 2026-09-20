@@ -3,8 +3,13 @@ import { ChevronRight } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { initialsOf } from '@/lib/api'
+import type { User } from '@/types/user'
 
-export default function UserCard({ user }) {
+interface UserCardProps {
+  user: User
+}
+
+export default function UserCard({ user }: UserCardProps) {
   return (
     <li>
       {/* Client-side navigation: no page reload, the header effects keep running. */}

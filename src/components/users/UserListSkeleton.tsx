@@ -1,7 +1,11 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
+interface UserListSkeletonProps {
+  rows?: number
+}
+
 /** The loading state: same shape as a real row, so nothing jumps on arrival. */
-export default function UserListSkeleton({ rows = 5 }) {
+export default function UserListSkeleton({ rows = 5 }: UserListSkeletonProps) {
   return (
     <ul className="space-y-2" aria-busy="true" aria-label="Loading users">
       {Array.from({ length: rows }, (_, index) => (

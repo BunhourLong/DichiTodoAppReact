@@ -8,7 +8,7 @@ import { Clock3 } from 'lucide-react'
  * timer forever and warns in the console.
  */
 export default function LiveClock() {
-  const [now, setNow] = useState(() => new Date())
+  const [now, setNow] = useState<Date>(() => new Date())
 
   useEffect(() => {
     const intervalId = setInterval(() => {

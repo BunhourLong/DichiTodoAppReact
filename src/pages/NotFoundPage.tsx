@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Compass } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-/** The catch-all: `path="*"` in App.jsx sends every unmatched URL here. */
+/** The catch-all: `path="*"` in App.tsx sends every unmatched URL here. */
 export default function NotFoundPage() {
   const { pathname } = useLocation()
 

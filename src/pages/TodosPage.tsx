@@ -3,14 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import AddTodo from '@/components/todos/AddTodo'
 import FilterBar from '@/components/todos/FilterBar'
 import TodoList from '@/components/todos/TodoList'
+import type { Todo, TodoFilter } from '@/types/todo'
 
-const INITIAL_TODOS = [
+const INITIAL_TODOS: Todo[] = [
   { id: 't1', text: 'Lift shared state into one owner', completed: true },
   { id: 't2', text: 'Give every listener and timer a cleanup', completed: false },
   { id: 't3', text: 'Guard the fetch with a cancelled flag', completed: false },
 ]
 
-const EMPTY_MESSAGE = {
+const EMPTY_MESSAGE: Record<TodoFilter, string> = {
   all: 'Nothing here yet — add your first todo above.',
   active: 'No active todos. Everything is done.',
   completed: 'Nothing completed yet.',
@@ -24,10 +25,10 @@ const EMPTY_MESSAGE = {
  * exactly one copy of the array, there is nothing to keep in sync.
  */
 export default function TodosPage() {
-  const [todos, setTodos] = useState(INITIAL_TODOS)
-  const [filter, setFilter] = useState('all')
+  const [todos, setTodos] = useState<Todo[]>(INITIAL_TODOS)
+  const [filter, setFilter] = useState<TodoFilter>('all')
 
-  function handleAddTodo(text) {
+  function handleAddTodo(text: string) {
     // Updater form: never read `todos` to compute the next `todos`.
     setTodos((current) => [
       ...current,
@@ -35,7 +36,7 @@ export default function TodosPage() {
     ])
   }
 
-  function handleToggleTodo(id) {
+  function handleToggleTodo(id: string) {
     setTodos((current) =>
       current.map((todo) =>
         todo.id === id ? { ...todo, completed: !todo.completed } : todo,
@@ -43,7 +44,7 @@ export default function TodosPage() {
     )
   }
 
-  function handleDeleteTodo(id) {
+  function handleDeleteTodo(id: string) {
     setTodos((current) => current.filter((todo) => todo.id !== id))
   }
 

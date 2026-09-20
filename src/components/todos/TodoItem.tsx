@@ -2,9 +2,16 @@ import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import type { Todo } from '@/types/todo'
+
+interface TodoItemProps {
+  todo: Todo
+  onToggle: (id: string) => void
+  onDelete: (id: string) => void
+}
 
 /** Pure presentation: it is told what a todo looks like and reports clicks up. */
-export default function TodoItem({ todo, onToggle, onDelete }) {
+export default function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
   return (
     <li className="group flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5">
       <Checkbox

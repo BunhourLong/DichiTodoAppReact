@@ -1,18 +1,23 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+
+interface AddTodoProps {
+  onAdd: (text: string) => void
+}
 
 /**
  * Knows nothing about the todo array. It owns exactly one thing: the text
  * currently typed into its own input (local UI state, never shared), and it
  * hands finished text up through `onAdd`.
  */
-export default function AddTodo({ onAdd }) {
+export default function AddTodo({ onAdd }: AddTodoProps) {
   const [text, setText] = useState('')
 
-  function handleSubmit(event) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const trimmed = text.trim()
