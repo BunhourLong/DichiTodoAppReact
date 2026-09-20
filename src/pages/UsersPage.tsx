@@ -1,18 +1,37 @@
 import { useState } from 'react'
-import { Inbox, RefreshCw, TriangleAlert } from 'lucide-react'
+import { Inbox, RefreshCw, SearchX, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import UserCard from '@/components/users/UserCard'
 import UserListSkeleton from '@/components/users/UserListSkeleton'
+import UserSearch from '@/components/users/UserSearch'
+import { useDebounce } from '@/hooks/useDebounce'
 import { useFetch } from '@/hooks/useFetch'
 import { USER_SOURCES, USER_SOURCE_KEYS } from '@/lib/api'
 import type { UserSourceKey } from '@/lib/api'
 import type { User } from '@/types/user'
 
+/** Name, handle or email — whatever the person typing had in mind. */
+function matchesQuery(user: User, normalisedQuery: string): boolean {
+  if (normalisedQuery === '') return true
+
+  return [user.name, user.username, user.email].some((field) =>
+    field.toLowerCase().includes(normalisedQuery),
+  )
+}
+
 export default function UsersPage() {
   const [source, setSource] = useState<UserSourceKey>('all')
   const [attempt, setAttempt] = useState(0)
+
+  // The raw value: one change per keystroke, and the only thing the input
+  // itself is bound to.
+  const [query, setQuery] = useState('')
+  // The trailing value: one change per pause. The filter below reads this
+  // one, so it runs once for "leanne" instead of six times.
+  const debouncedQuery = useDebounce(query, 500)
 
   const url = USER_SOURCES[source].url
 
@@ -20,13 +39,20 @@ export default function UsersPage() {
   // Ask for `users.nmae` below and the build fails; the hook never saw a user.
   const { data: users, loading, error } = useFetch<User[]>(url, attempt)
 
+  // Derived during render from the one array and the debounced query — no
+  // second list in state, so there is nothing to keep in sync.
+  const normalisedQuery = debouncedQuery.trim().toLowerCase()
+  const visibleUsers = users?.filter((user) => matchesQuery(user, normalisedQuery))
+  const filtered = normalisedQuery !== ''
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">User directory</h1>
         <p className="text-sm text-muted-foreground">
           Live data from jsonplaceholder, read through{' '}
-          <code className="font-mono text-xs">useFetch&lt;User[]&gt;</code>.
+          <code className="font-mono text-xs">useFetch&lt;User[]&gt;</code> and
+          filtered through <code className="font-mono text-xs">useDebounce</code>.
         </p>
       </div>
 
@@ -53,6 +79,14 @@ export default function UsersPage() {
               </Button>
             ))}
           </div>
+
+          <Separator />
+
+          <UserSearch
+            query={query}
+            debouncedQuery={debouncedQuery}
+            onQueryChange={setQuery}
+          />
 
           {loading && <UserListSkeleton />}
 
@@ -88,13 +122,37 @@ export default function UsersPage() {
             </div>
           )}
 
-          {users && users.length > 0 && (
-            <ul className="space-y-2">
-              {/* `user` is a `User` here with no cast and no `any` in sight. */}
-              {users.map((user) => (
-                <UserCard key={user.id} user={user} />
-              ))}
-            </ul>
+          {/* Loaded fine, the filter is simply narrower than the data. */}
+          {users && users.length > 0 && visibleUsers?.length === 0 && (
+            <div className="rounded-lg border border-dashed px-3 py-10 text-center">
+              <SearchX
+                className="mx-auto size-6 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="mt-2 text-sm font-medium">
+                Nobody matches “{debouncedQuery}”
+              </p>
+              <p className="text-sm text-muted-foreground">
+                All {users.length} users are still loaded — only the filter is
+                hiding them.
+              </p>
+            </div>
+          )}
+
+          {visibleUsers && visibleUsers.length > 0 && (
+            <>
+              {filtered && users && (
+                <p className="text-sm text-muted-foreground">
+                  Showing {visibleUsers.length} of {users.length}
+                </p>
+              )}
+              <ul className="space-y-2">
+                {/* `user` is a `User` here with no cast and no `any` in sight. */}
+                {visibleUsers.map((user) => (
+                  <UserCard key={user.id} user={user} />
+                ))}
+              </ul>
+            </>
           )}
         </CardContent>
       </Card>
