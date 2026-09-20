@@ -27,7 +27,7 @@ export default defineConfig([
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { varsIgnorePattern: '^[A-Z_]' },
+        { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' },
       ],
       // The module audit is explicit: every effect lists only the values it
       // reads, so a missing dependency is a failure, not a warning.

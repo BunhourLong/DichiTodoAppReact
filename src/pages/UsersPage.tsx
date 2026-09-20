@@ -1,78 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Inbox, RefreshCw, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import UserCard from '@/components/users/UserCard'
 import UserListSkeleton from '@/components/users/UserListSkeleton'
+import { useFetch } from '@/hooks/useFetch'
 import { USER_SOURCES, USER_SOURCE_KEYS } from '@/lib/api'
 import type { UserSourceKey } from '@/lib/api'
 import type { User } from '@/types/user'
 
-type Status = 'loading' | 'success' | 'error'
-
 export default function UsersPage() {
   const [source, setSource] = useState<UserSourceKey>('all')
   const [attempt, setAttempt] = useState(0)
-  const [status, setStatus] = useState<Status>('loading')
-  const [users, setUsers] = useState<User[]>([])
-  const [error, setError] = useState<string | null>(null)
 
   const url = USER_SOURCES[source].url
 
-  useEffect(() => {
-    // The race guard. Switch sources twice quickly and two requests are in
-    // flight at once; whichever answers last would otherwise win and paint
-    // the wrong list. The cleanup flips this flag, so a response that belongs
-    // to a run we have moved on from is read and thrown away.
-    let cancelled = false
-    const controller = new AbortController()
-
-    async function loadUsers() {
-      setStatus('loading')
-      setError(null)
-
-      try {
-        const response = await fetch(url, { signal: controller.signal })
-
-        // fetch only rejects on network failure — a 404 is a resolved promise
-        // with ok === false, so the error state has to be raised by hand.
-        if (!response.ok) {
-          throw new Error(`Request failed — ${response.status} ${response.statusText}`)
-        }
-
-        const data = (await response.json()) as User[]
-        if (cancelled) return
-
-        setUsers(data)
-        setStatus('success')
-      } catch (requestError) {
-        if (cancelled || (requestError as Error).name === 'AbortError') return
-
-        setError(
-          requestError instanceof Error ? requestError.message : 'Request failed.',
-        )
-        setStatus('error')
-      }
-    }
-
-    loadUsers()
-
-    return () => {
-      cancelled = true
-      // abort() stops the request itself; `cancelled` still matters because a
-      // response can already be resolving when the cleanup runs.
-      controller.abort()
-    }
-    // Only the two values the effect actually reads.
-  }, [url, attempt])
+  // The narrowing, in one line: `users` is `User[] | null` and nothing else.
+  // Ask for `users.nmae` below and the build fails; the hook never saw a user.
+  const { data: users, loading, error } = useFetch<User[]>(url, attempt)
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">User directory</h1>
         <p className="text-sm text-muted-foreground">
-          Live data from jsonplaceholder, with a branch for every outcome.
+          Live data from jsonplaceholder, read through{' '}
+          <code className="font-mono text-xs">useFetch&lt;User[]&gt;</code>.
         </p>
       </div>
 
@@ -100,9 +54,9 @@ export default function UsersPage() {
             ))}
           </div>
 
-          {status === 'loading' && <UserListSkeleton />}
+          {loading && <UserListSkeleton />}
 
-          {status === 'error' && (
+          {error && (
             <Alert variant="destructive">
               <TriangleAlert aria-hidden="true" />
               <AlertTitle>Could not load the directory</AlertTitle>
@@ -121,7 +75,7 @@ export default function UsersPage() {
             </Alert>
           )}
 
-          {status === 'success' && users.length === 0 && (
+          {users && users.length === 0 && (
             <div className="rounded-lg border border-dashed px-3 py-10 text-center">
               <Inbox
                 className="mx-auto size-6 text-muted-foreground"
@@ -134,8 +88,9 @@ export default function UsersPage() {
             </div>
           )}
 
-          {status === 'success' && users.length > 0 && (
+          {users && users.length > 0 && (
             <ul className="space-y-2">
+              {/* `user` is a `User` here with no cast and no `any` in sight. */}
               {users.map((user) => (
                 <UserCard key={user.id} user={user} />
               ))}

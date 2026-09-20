@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
@@ -18,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useFetch } from '@/hooks/useFetch'
 import { API_BASE, initialsOf } from '@/lib/api'
 import type { User } from '@/types/user'
 
@@ -39,60 +39,13 @@ function DetailRow({ icon: Icon, label, children }: DetailRowProps) {
   )
 }
 
-type Status = 'loading' | 'success' | 'error'
-
 export default function UserDetailPage() {
-  // The URL is the input to this page: /users/3 fetches user 3.
+  // The URL is the input to this page: /users/3 fetches user 3. Change the id
+  // and `url` changes, so the hook's effect re-runs and re-guards the race.
   const { id } = useParams()
 
-  const [status, setStatus] = useState<Status>('loading')
-  const [user, setUser] = useState<User | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    const controller = new AbortController()
-
-    async function loadUser() {
-      setStatus('loading')
-      setError(null)
-
-      try {
-        const response = await fetch(`${API_BASE}/users/${id}`, {
-          signal: controller.signal,
-        })
-
-        if (response.status === 404) {
-          throw new Error(`No user with id "${id}".`)
-        }
-        if (!response.ok) {
-          throw new Error(`Request failed — ${response.status} ${response.statusText}`)
-        }
-
-        const data = (await response.json()) as User
-        if (cancelled) return
-
-        setUser(data)
-        setStatus('success')
-      } catch (requestError) {
-        if (cancelled || (requestError as Error).name === 'AbortError') return
-
-        setError(
-          requestError instanceof Error ? requestError.message : 'Request failed.',
-        )
-        setStatus('error')
-      }
-    }
-
-    loadUser()
-
-    return () => {
-      cancelled = true
-      controller.abort()
-    }
-    // `id` is the only value read from outside, so it is the only dependency:
-    // change the URL and the fetch re-runs, stay put and it does not.
-  }, [id])
+  // Same hook, a different `T`: one user, not a list.
+  const { data: user, loading, error } = useFetch<User>(`${API_BASE}/users/${id}`)
 
   return (
     <div className="space-y-6">
@@ -103,7 +56,7 @@ export default function UserDetailPage() {
         </Link>
       </Button>
 
-      {status === 'loading' && (
+      {loading && (
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -122,7 +75,7 @@ export default function UserDetailPage() {
         </Card>
       )}
 
-      {status === 'error' && (
+      {error && (
         <Alert variant="destructive">
           <TriangleAlert aria-hidden="true" />
           <AlertTitle>User not available</AlertTitle>
@@ -130,7 +83,7 @@ export default function UserDetailPage() {
         </Alert>
       )}
 
-      {status === 'success' && user && (
+      {user && (
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
